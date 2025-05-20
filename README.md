@@ -54,7 +54,7 @@ cd archive/logs-20250520212902 && cat log-agent-gd6bl.log
 chmod +x simplescripts/clear.sh && ./simplescripts/clear.sh
 ```
 
-# UPDATE:
+# Второе домашнее задание (UPDATE ниже):
 
 ## Запуск развертки:
 
@@ -167,4 +167,26 @@ $ curl -v http://10.98.223.22/status
 
 ```
 chmod +x simplescripts/clear.sh && ./simplescripts/clear.sh
+```
+
+# UPDATE:
+
+## Запуск развертки:
+
+```
+chmod +x simplescripts/deploy.sh && ./simplescripts/deploy.sh
+```
+
+## Аналогично предыдущим дз, запустим в отдельном окне `minikube tunnel` и посмотрим external-ip:
+
+```
+$ kubectl -n istio-system get svc istio-ingressgateway
+NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)                                                                      AGE
+istio-ingressgateway   LoadBalancer   10.99.215.214   10.99.215.214   15021:32569/TCP,80:32549/TCP,443:32128/TCP,31400:31923/TCP,15443:30993/TCP   2m2s
+```
+
+##
+
+```
+
 ```

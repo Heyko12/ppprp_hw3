@@ -31,6 +31,15 @@ spec:
               number: 5000
 
     - match:
+        - uri:
+            prefix: /prometheus
+      route:
+        - destination:
+            host: prometheus-stack-kube-prom-prometheus
+            port:
+              number: 9090
+
+    - match:
         - method:
             exact: GET
           uri:

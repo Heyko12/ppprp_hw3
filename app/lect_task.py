@@ -1,8 +1,17 @@
 from flask import Flask, request, jsonify
 import json
 import os
+import time
+from prometheus_client import make_wsgi_app, Counter, Histogram
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 app = Flask(__name__)
+
+LOG_REQUEST_COUNTER = Counter('app_log_requests_total', 'Total number of /log requests')
+LOG_REQUEST_SUCCESS = Counter('app_log_requests_success', 'Total successful log requests', ['status'])
+LOG_REQUEST_DURATION = Histogram('app_log_request_duration_seconds', 'Duration of /log requests')
+
+app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {'/metrics': make_wsgi_app()})
 
 log_file_path = "logs/app.log"
 
@@ -28,15 +37,28 @@ def status():
 
 @app.route("/log", methods=["POST"])
 def log_message():
+    start_time = time.time()
+    LOG_REQUEST_COUNTER.inc()
     data = request.get_json()
     message = data.get("message")
     
-    if message:
-        with open(log_file_path, "a") as log_file:
-            log_file.write(message + "\n")
-        return jsonify({"message": "Log saved successfully"}), 201
-    else:
-        return jsonify({"error": "Message is required"}), 400
+    try:
+        if message:
+            with open(log_file_path, "a") as log_file:
+                log_file.write(message + "\n")
+            LOG_REQUEST_SUCCESS.labels(status='success').inc()
+            response = jsonify({"message": "Log saved successfully"}), 201
+        else:
+            LOG_REQUEST_SUCCESS.labels(status='error').inc()
+            response = jsonify({"error": "Message is required"}), 400
+    except Exception as e:
+        LOG_REQUEST_SUCCESS.labels(status='error').inc()
+        response = jsonify({"error": str(e)}), 500
+    finally:
+        duration = time.time() - start_time
+        LOG_REQUEST_DURATION.observe(duration)
+    
+    return response
 
 @app.route("/logs", methods=["GET"])
 def get_logs():
