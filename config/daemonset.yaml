@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: log-agent
+spec:
+  selector:
+    matchLabels:
+      app: log-agent
+  template:
+    metadata:
+      labels:
+        app: log-agent
+    spec:
+      containers:
+        - name: log-agent
+          image: busybox:1.35.0-uclibc
+          command:
+            - "sh"
+            - "-c"
+            - |
+              #!/bin/sh
+              BASE=/var/lib/kubelet/pods
+              TRACK_FILE=/var/run/tailed_files.list
+              touch "$TRACK_FILE"
+
+              while true; do
+                find "$BASE" -type f \
+                  -path '*/volumes/kubernetes.io~empty-dir/logs/app.log' | \
+                while read -r logfile; do
+                  if ! grep -Fxq "$logfile" "$TRACK_FILE"; then
+                    echo "Tracking new logfile: $logfile"
+                    echo "$logfile" >> "$TRACK_FILE"
+                    # Use tail -n +1 to include existing lines
+                    tail -n +1 -F "$logfile" &
+                  fi
+                done
+                sleep 1
+              done
+              wait
+          volumeMounts:
+            - name: pods
+              mountPath: /var/lib/kubelet/pods
+              readOnly: true
+      volumes:
+        - name: pods
+          hostPath:
+            path: /var/lib/kubelet/pods
+            type: Directory
