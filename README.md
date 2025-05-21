@@ -191,6 +191,8 @@ istio-ingressgateway   LoadBalancer   10.102.78.112   10.102.78.112   15021:3039
 
 ![](images/image1.png)
 
+![](imeges/image5.png)
+
 ## Посмотрим теперь на метрики нашего приложения:
 
 ![](images/image2.png)
