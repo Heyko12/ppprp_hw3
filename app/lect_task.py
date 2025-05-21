@@ -1,66 +1,72 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import json
 import os
 import time
-from prometheus_client import make_wsgi_app, Counter, Histogram
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
 
-LOG_REQUEST_COUNTER = Counter('app_log_requests_total', 'Total number of /log requests')
-LOG_REQUEST_SUCCESS = Counter('app_log_requests_success', 'Total successful log requests', ['status'])
-LOG_REQUEST_DURATION = Histogram('app_log_request_duration_seconds', 'Duration of /log requests')
-
-app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {'/metrics': make_wsgi_app()})
+REQUEST_COUNT = Counter('flask_requests_total', 'Общее число HTTP запросов', ['endpoint', 'method'])
+LOG_SUCCESS = Counter('flask_log_success_total', 'Успешные попытки логирования')
+LOG_FAILURE = Counter('flask_log_failure_total', 'Неуспешные попытки логирования')
+REQUEST_LATENCY = Histogram('flask_request_duration_seconds', 'Время обработки запроса')
 
 log_file_path = "logs/app.log"
-
 CONFIG_PATH = "/app/config/app-config.json"
-
 def load_config():
     try:
         with open(CONFIG_PATH) as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading config: {e}")
-        return {"hello_message": "Welcome to the default app"}
-    
+        return {"hello_message": "Welcome to the default app"}    
 config = load_config()
 
+def track(endpoint):
+    def decorator(fn):
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            REQUEST_COUNT.labels(endpoint=endpoint, method=request.method).inc()
+            try:
+                resp = fn(*args, **kwargs)
+                duration = time.time() - start
+                REQUEST_LATENCY.observe(duration)
+                return resp
+            except Exception:
+                REQUEST_LATENCY.observe(time.time() - start)
+                raise
+        wrapper.__name__ = fn.__name__
+        return wrapper
+    return decorator
+
 @app.route("/", methods=["GET"])
+@track('home')
 def home():
     return config["hello_message"]
 
 @app.route("/status", methods=["GET"])
+@track('status')
 def status():
     return jsonify({"status": "ok"})
 
 @app.route("/log", methods=["POST"])
+@track('log')
 def log_message():
-    start_time = time.time()
-    LOG_REQUEST_COUNTER.inc()
     data = request.get_json()
     message = data.get("message")
     
-    try:
-        if message:
-            with open(log_file_path, "a") as log_file:
-                log_file.write(message + "\n")
-            LOG_REQUEST_SUCCESS.labels(status='success').inc()
-            response = jsonify({"message": "Log saved successfully"}), 201
-        else:
-            LOG_REQUEST_SUCCESS.labels(status='error').inc()
-            response = jsonify({"error": "Message is required"}), 400
-    except Exception as e:
-        LOG_REQUEST_SUCCESS.labels(status='error').inc()
-        response = jsonify({"error": str(e)}), 500
-    finally:
-        duration = time.time() - start_time
-        LOG_REQUEST_DURATION.observe(duration)
-    
+    if message:
+        with open(log_file_path, "a") as log_file:
+            log_file.write(message + "\n")
+        LOG_SUCCESS.inc()
+        response = jsonify({"message": "Log saved successfully"}), 201
+    else:
+        LOG_FAILURE.inc()
+        response = jsonify({"error": "Message is required"}), 400
     return response
 
 @app.route("/logs", methods=["GET"])
+@track('logs')
 def get_logs():
     if os.path.exists(log_file_path):
         with open(log_file_path, "r") as log_file:
@@ -68,6 +74,10 @@ def get_logs():
         return logs if logs else "No logs found."
     else:
         return "Log file does not exist.", 404
+
+@app.route("/metrics")
+def metrics():
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 if __name__ == "__main__":
     os.makedirs(os.path.dirname(log_file_path), exist_ok=True)

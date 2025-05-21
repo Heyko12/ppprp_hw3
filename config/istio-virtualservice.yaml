@@ -11,6 +11,15 @@ spec:
 
   http:
     - match:
+        - authority:
+            exact: prometheus.test
+      route:
+        - destination:
+            host: prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local
+            port:
+              number: 9090
+
+    - match:
         - method:
             exact: POST
           uri:
@@ -29,15 +38,6 @@ spec:
             host: flask-app-service
             port:
               number: 5000
-
-    - match:
-        - uri:
-            prefix: /prometheus
-      route:
-        - destination:
-            host: prometheus-stack-kube-prom-prometheus
-            port:
-              number: 9090
 
     - match:
         - method:
