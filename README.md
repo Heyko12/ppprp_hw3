@@ -187,7 +187,7 @@ NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)   
 istio-ingressgateway   LoadBalancer   10.102.78.112   10.102.78.112   15021:30398/TCP,80:31378/TCP,443:30859/TCP,31400:32067/TCP,15443:31943/TCP   94s
 ```
 
-## Добавим запись `10.96.1.229 prometheus.test` в `/etc/hosts` (командой `sudo nano /etc/hosts`) для дальнейшей удобной работы с GUI prometheus-а, и перейдем по `http://prometheus.test` в браузере. Prometheus из коробки видит метрики Envoy proxy (надо только сначала injection=enabled делать, и только потом уже поды создавать), убедимся в этом, предварительно покурлив свое приложение как в предыдущем задании:
+## Добавим запись `10.102.78.112 prometheus.test` в `/etc/hosts` (командой `sudo nano /etc/hosts`) для дальнейшей удобной работы с GUI prometheus-а, и перейдем по `http://prometheus.test` в браузере. Prometheus из коробки видит метрики Envoy proxy (надо только сначала injection=enabled делать, и только потом уже поды создавать), убедимся в этом, предварительно покурлив свое приложение как в предыдущем задании:
 
 ![](images/image1.png)
 
