@@ -54,7 +54,7 @@ cd archive/logs-20250520212902 && cat log-agent-gd6bl.log
 chmod +x simplescripts/clear.sh && ./simplescripts/clear.sh
 ```
 
-# UPDATE:
+# Второе домашнее задание (UPDATE ниже):
 
 ## Запуск развертки:
 
@@ -168,3 +168,43 @@ $ curl -v http://10.98.223.22/status
 ```
 chmod +x simplescripts/clear.sh && ./simplescripts/clear.sh
 ```
+
+# UPDATE:
+
+## Я обновила VirtualService, чтобы на том же Gatewy раутиться еще и в сервис прометеуса. Кроме того, я добавила файл prometheus-monitor.yaml, чтобы поставить самый простой ServiceMonitor прометеуса и дописала свое приложение с помощью декоратора, накапливая метрики и отдавая их по ручке `/monitor`, который указала в ServiceMonitor. Обязательно также требуется установить аддон истио для прометеуса (и устанавливать сам прометеус с корректной конфигурацией для автодискавери values - см. файл prometheus-values.yaml), прежде чем его ставить, иначе ничего не получится. Теперь я покажу что из этого получилось.
+
+## Запуск развертки (с установкой prometheus helm-чарта):
+
+```
+chmod +x simplescripts/deploy.sh && ./simplescripts/deploy.sh
+```
+
+## Аналогично предыдущим дз, запустим в отдельном окне `minikube tunnel` и посмотрим external-ip:
+
+```
+$ kubectl -n istio-system get svc istio-ingressgateway
+NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)                                                                      AGE
+istio-ingressgateway   LoadBalancer   10.102.78.112   10.102.78.112   15021:30398/TCP,80:31378/TCP,443:30859/TCP,31400:32067/TCP,15443:31943/TCP   94s
+```
+
+## Добавим запись `10.102.78.112 prometheus.test` в `/etc/hosts` (командой `sudo nano /etc/hosts`) для дальнейшей удобной работы с GUI prometheus-а, и перейдем по `http://prometheus.test` в браузере. Prometheus из коробки видит метрики Envoy proxy (надо только сначала injection=enabled делать, и только потом уже поды создавать), убедимся в этом, предварительно покурлив свое приложение как в предыдущем задании:
+
+![](images/image1.png)
+
+![](imeges/image5.png)
+
+## Посмотрим теперь на метрики нашего приложения:
+
+![](images/image2.png)
+
+## Например, вот метрика `flask_requests_total`:
+
+![](images/image3.png)
+
+## А вот метрика `flask_log_success_total` после того, как мы несколько раз дали нагрузку на приложение (`curl -X POST http://10.102.78.112/log -H "Content-Type: application/json" -d '{"message":"test"}' -v`): 
+
+![](images/image4.png)
+
+## Также мереется и метрика времени обращения:
+
+![](images/image6.png)
