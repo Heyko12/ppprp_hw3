@@ -204,3 +204,7 @@ istio-ingressgateway   LoadBalancer   10.102.78.112   10.102.78.112   15021:3039
 ## А вот метрика `flask_log_success_total` после того, как мы несколько раз дали нагрузку на приложение (`curl -X POST http://10.102.78.112/log -H "Content-Type: application/json" -d '{"message":"test"}' -v`): 
 
 ![](images/image4.png)
+
+## Также мереется и метрика времени обращения:
+
+![](images/image6.png)
